@@ -1,6 +1,6 @@
 import requests
 
-BACKEND_URL = "https://https://ai-job-backend.onrender.com/generate-cover-letter"
+BACKEND_URL = "http://localhost:8000/generate-cover-letter"
 
 def generate_cover_letter(resume_text, job_description):
     try:
