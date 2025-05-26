@@ -53,7 +53,7 @@ def extract_text_from_file(uploaded_file):
         text += page.extract_text()
     return text    
 
-BACKEND_URL = "http://localhost:8000"  # or your deployed backend URL
+BACKEND_URL = "http://localhost:8000"  # or deployed backend URL
 def get_jobs_from_backend(query, location):
     res = requests.get(f"{BACKEND_URL}/jobs", params={"query": query, "location": location})
     return res.json() if res.status_code == 200 else []
