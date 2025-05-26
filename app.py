@@ -37,7 +37,7 @@ if "user" not in st.session_state:
 def call_backend_to_generate_cover_letter(resume_text, job_description):
     try:
         response = requests.post(
-            "http://localhost:8000/generate-cover-letter",  # Change this to your Render URL after deployment
+            "https://ai-job-backend.onrender.com/generate-cover-letter",  # Change this to your Render URL after deployment
             json={"resume_text": resume_text, "job_description": job_description}
         )
         response.raise_for_status()
@@ -53,7 +53,7 @@ def extract_text_from_file(uploaded_file):
         text += page.extract_text()
     return text    
 
-BACKEND_URL = "http://localhost:8000"  # or deployed backend URL
+BACKEND_URL = "https://ai-job-backend.onrender.com"  # or deployed backend URL
 def get_jobs_from_backend(query, location):
     res = requests.get(f"{BACKEND_URL}/jobs", params={"query": query, "location": location})
     return res.json() if res.status_code == 200 else []
