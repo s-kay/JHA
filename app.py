@@ -155,7 +155,8 @@ if submit and keyword:
             st.error(f"Error fetching jobs: {e}")
 
 #..Application Page
-for i, job in enumerate(jobs):  # 'job' is defined here
+if jobs:
+ for i, job in enumerate(jobs):  # 'job' is defined here
     col1, col2 = st.columns([3, 1])
     with col1:
         st.markdown(f"**{job['title']}** at *{job['company']}*")
@@ -165,6 +166,9 @@ for i, job in enumerate(jobs):  # 'job' is defined here
         if st.button(f"Apply Now {i}"):
             js = f"window.open('{job['url']}')"
             st.components.v1.html(f"<script>{js}</script>", height=0)
+
+else: 
+    st.warning("No jobs available.")
 
 
 
