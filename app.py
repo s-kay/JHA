@@ -155,16 +155,17 @@ if submit and keyword:
             st.error(f"Error fetching jobs: {e}")
 
 #..Application Page
-for i, job in enumerate(jobs):
+for i, job in enumerate(jobs):  # 'job' is defined here
     col1, col2 = st.columns([3, 1])
     with col1:
         st.markdown(f"**{job['title']}** at *{job['company']}*")
-        st.caption(job['location'])
-        st.write(job['description'][:300] + "...")
-with col2:
-    if st.button(f"Apply Now {i}"):
-        js = f"window.open('{job['url']}')"
-        st.components.v1.html(f"<script>{js}</script>", height=0)
+        st.caption(job.get('location', 'Location not provided'))
+        st.write(job.get('description', '')[:300] + "...")
+    with col2:
+        if st.button(f"Apply Now {i}"):
+            js = f"window.open('{job['url']}')"
+            st.components.v1.html(f"<script>{js}</script>", height=0)
+
 
 
 #..Tailor Resume
