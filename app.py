@@ -6,6 +6,9 @@ import requests
 from utils.workspace_utils import save_to_workspace
 from utils.auth_utils import sign_in_with_email_password, sign_up
 import requests
+from PIL import Image
+
+
 
 if "user" not in st.session_state:
     st.title("Login to AI Job Assistant")
@@ -19,7 +22,7 @@ if "user" not in st.session_state:
             user = sign_in_with_email_password(email, password)
             if user:
                 st.session_state.user = user
-                st.experimental_rerun()
+                st.run()
             else:
                 st.error("Invalid login")
         else:
@@ -29,9 +32,6 @@ if "user" not in st.session_state:
                 st.error("Registration failed")
 
     st.stop()
-
-
-
 
 # --- Backend Communication Function ---
 def call_backend_to_generate_cover_letter(resume_text, job_description):
@@ -194,3 +194,4 @@ if 'active_resume' in st.session_state:
     st.text_area("📄 Resume", st.session_state['active_resume'], height=200)
     st.text_area("📝 Cover Letter", st.session_state['active_cover_letter'], height=200)
     st.caption("👆 Copy these and paste into the application form manually.")
+
