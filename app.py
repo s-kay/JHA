@@ -22,7 +22,7 @@ if "user" not in st.session_state:
             user = sign_in_with_email_password(email, password)
             if user:
                 st.session_state.user = user
-                st.run()
+                st.rerun()
             else:
                 st.error("Invalid login")
         else:
