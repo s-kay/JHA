@@ -8,13 +8,18 @@ from utils.auth_utils import sign_in_with_email_password, sign_up
 import requests
 from PIL import Image
 
-#sign-out logic
+
+
+# Sign-out logic
 if 'user_logged_in' in st.session_state and st.session_state['user_logged_in']:
-    if st.button("🔓 Sign Out"):
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-        st.success("Signed out successfully.")
-        st.experimental_rerun()
+    with st.sidebar:
+        if st.button("🔓 Sign Out"):
+            # Clear user session
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.success("Signed out successfully.")
+            st.experimental_rerun()
+
 
 
 
