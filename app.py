@@ -8,7 +8,7 @@ from utils.auth_utils import sign_in_with_email_password, sign_up
 import requests
 from PIL import Image
 
-
+#sign-out logic
 if 'user_logged_in' in st.session_state and st.session_state['user_logged_in']:
     if st.button("🔓 Sign Out"):
         for key in list(st.session_state.keys()):
@@ -73,10 +73,12 @@ st.set_page_config(
     layout="centered",
 )
 
+if st.session_state.get('user_logged_in'):
+
 # --- Title & Description ---
-st.title("🎯 AI Job Application Assistant")
-st.markdown(
-    "Upload your **resume** and paste a **job description**, and get a tailored, professional cover letter in seconds."
+    st.title("🎯 AI Job Application Assistant")
+    st.markdown(
+        "Upload your **resume** and paste a **job description**, and get a tailored, professional cover letter in seconds."
 )
 
 st.header("🔍 AI Job Finder")
@@ -209,3 +211,5 @@ if 'active_resume' in st.session_state:
     st.text_area("📝 Cover Letter", st.session_state['active_cover_letter'], height=200)
     st.caption("👆 Copy these and paste into the application form manually.")
 
+else:
+    st.warning("🔐 Please log in to access the app.")
