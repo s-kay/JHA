@@ -130,7 +130,7 @@ if submit and keyword:
     with st.spinner("Searching..."):
         try:
             response = requests.get(
-                 "http://localhost:8000/search_jobs",
+                "https://ai-job-backend.onrender.com/search_jobs",
     params={
         "keyword": keyword,
         "location": location,
@@ -155,11 +155,11 @@ if submit and keyword:
             st.error(f"Error fetching jobs: {e}")
 
 #..Application Page
-col1, col2 = st.columns([3, 1])
-with col1:
-    st.markdown(f"**{job['title']}** at *{job['company']}*")
-    st.caption(job['location'])
-    st.write(job['description'][:300] + "...")
+    col1, col2 = st.columns([3, 1])
+    with col1:
+     st.markdown(f"**{job['title']}** at *{job['company']}*")
+     st.caption(job['location'])
+     st.write(job['description'][:300] + "...")
 with col2:
     if st.button(f"Apply Now {i}"):
         js = f"window.open('{job['url']}')"
