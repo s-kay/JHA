@@ -1,220 +1,104 @@
+
 import streamlit as st
-import PyPDF2
+import requests
+from utils.gpt_helpers import generate_cover_letter, tailor_resume
 from utils.parser import extract_text_from_file
-from utils.gpt_helpers import generate_cover_letter
-import requests
 from utils.workspace_utils import save_to_workspace
-from utils.auth_utils import sign_in_with_email_password, sign_up
-import requests
-from PIL import Image
+from auth.auth_manager import is_logged_in, logout
+import login
 
-
-
-# Sign-out logic
-if 'user_logged_in' in st.session_state and st.session_state['user_logged_in']:
-    with st.sidebar:
-        if st.button("🔓 Sign Out"):
-            # Clear user session
-            for key in list(st.session_state.keys()):
-                del st.session_state[key]
-            st.success("Signed out successfully.")
-            st.experimental_rerun()
-
-
-
-
-if "user" not in st.session_state:
-    st.title("Login to AI Job Assistant")
-
-    auth_mode = st.radio("Select Action", ["Login", "Register"])
-    email = st.text_input("Email")
-    password = st.text_input("Password", type="password")
-
-    if st.button("Continue"):
-        if auth_mode == "Login":
-            user = sign_in_with_email_password(email, password)
-            if user:
-                st.session_state.user = user
-                st.rerun()
-            else:
-                st.error("Invalid login")
-        else:
-            if sign_up(email, password):
-                st.success("Registered! Please login.")
-            else:
-                st.error("Registration failed")
-
+if not is_logged_in():
+    login.show_login()  # This displays your login page
     st.stop()
 
-# --- Backend Communication Function ---
-def call_backend_to_generate_cover_letter(resume_text, job_description):
-    try:
-        response = requests.post(
-            "https://ai-job-backend.onrender.com/generate-cover-letter",  # Change this to your Render URL after deployment
-            json={"resume_text": resume_text, "job_description": job_description}
-        )
-        response.raise_for_status()
-        return response.json()["cover_letter"]
-    except requests.RequestException as e:
-        raise RuntimeError(f"Failed to contact backend: {e}")
-    
+st.set_page_config(page_title="AI Job Assistant", layout="wide")
 
-def extract_text_from_file(uploaded_file):
-    reader = PyPDF2.PdfReader(uploaded_file)
-    text = ""
-    for page in reader.pages:
-        text += page.extract_text()
-    return text    
+def main():
+    if not is_logged_in():
+        st.warning("🔒 Please log in to access the app.")
+        return
 
-BACKEND_URL = "https://ai-job-backend.onrender.com"  # or deployed backend URL
-def get_jobs_from_backend(query, location):
-    res = requests.get(f"{BACKEND_URL}/jobs", params={"query": query, "location": location})
-    return res.json() if res.status_code == 200 else []
+    st.title("🤖 AI Job Assistant")
+    st.sidebar.title("🔧 Options")
 
-# --- Streamlit App Configuration ---
-st.set_page_config(
-    page_title="AI Job Application Assistant",
-    page_icon="🎯",
-    layout="centered",
-)
+    # Sign-out button
+    if st.sidebar.button("Sign Out"):
+        logout()
+        st.rerun()
 
-if st.session_state.get('user_logged_in'):
+    section = st.sidebar.radio("Choose an action", [
+        "Find Jobs", "Tailor Resume", "Generate Cover Letter", "Workspace"
+    ])
 
-# --- Title & Description ---
-    st.title("🎯 AI Job Application Assistant")
-    st.markdown(
-        "Upload your **resume** and paste a **job description**, and get a tailored, professional cover letter in seconds."
-)
+    if section == "Find Jobs":
+        keyword = st.text_input("Job Keyword", key="job_kw")
+        location = st.text_input("Location", value="remote")
+        experience = st.selectbox("Experience Level", ["Any", "Entry", "Mid", "Senior"])
+        remote_only = st.checkbox("Remote only?", value=True)
 
-st.header("🔍 AI Job Finder")
-job_query = st.text_input("Search Jobs (e.g. 'Python Developer')", "AI Engineer")
-job_location = st.text_input("Location", "Remote")
+        if st.button("Search"):
+            with st.spinner("Searching for jobs..."):
+                try:
+                    res = requests.get("https://ai-job-backend.onrender.com/search_jobs", params={
+                        "keyword": keyword,
+                        "location": location,
+                        "experience": experience,
+                        "remote_only": remote_only
+                    })
+                    jobs = res.json().get("results", [])
+                    st.session_state["job_list"] = jobs
 
-if st.button("🔎 Find Jobs"):
-    jobs = get_jobs_from_backend(job_query, job_location)
-    for i, job in enumerate(jobs):
-        st.markdown(f"**{job['title']}** at *{job['company']}*")
-        st.write(job["summary"])
-        with st.expander("🔗 View / Apply"):
-            st.write(f"[Open Job Posting]({job['link']})")
+                    if jobs:
+                        st.success(f"✅ Found {len(jobs)} jobs")
+                        for i, job in enumerate(jobs):
+                            with st.expander(f"{job['title']} at {job['company']}"):
+                                st.write(f"📍 {job.get('location', 'Unknown')}")
+                                st.write(f"{job.get('description', '')[:300]}...")
+                                if st.button(f"Use This Job {i}"):
+                                    st.session_state["selected_job"] = job
+                                    st.session_state["job_description"] = job["description"]
+                    else:
+                        st.warning("No jobs found.")
 
-        if st.button(f"Use this job ↓", key=f"job_select_{i}"):
-            st.session_state.job_description = job["summary"]
-            st.experimental_rerun()
+                except Exception as e:
+                    st.error(f"Failed to fetch jobs: {e}")
 
+    elif section == "Tailor Resume":
+        uploaded_resume = st.file_uploader("Upload Your Resume", type=["pdf", "docx", "txt"])
+        job_description = st.text_area("Paste Job Description")
 
-# --- File Upload ---
-uploaded_file = st.file_uploader("📄 Upload your resume (PDF or DOCX)", type=["pdf", "docx"])
-
-# --- Job Description Input ---
-job_description = st.text_area("📝 Paste the job description here", height=200, value=st.session_state.get('job_description', ''))
-
-# --- Action Button ---
-if uploaded_file and job_description:
-    if st.button("✨ Generate Cover Letter"):
-        with st.spinner("Reading your resume and crafting the cover letter..."):
-            try:
-                resume_text = extract_text_from_file(uploaded_file)
-                cover_letter = generate_cover_letter(resume_text, job_description)
-                st.success("✅ Cover letter generated successfully!")
-
-                # --- Output ---
-                st.subheader("📬 Your Tailored Cover Letter")
-                st.text_area("Cover Letter", value=cover_letter, height=300)
-
-                # --- Download Button ---
-                st.download_button("📥 Download Cover Letter", cover_letter, file_name="cover_letter.txt")
-
-            except Exception as e:
-                st.error(f"An error occurred: {e}")
-
-elif not uploaded_file or not job_description:
-    st.info("📌 Please upload your resume and paste a job description to begin.")
-
-
-# Search Jobs
-st.subheader("🔍 Find Jobs")
-with st.form(key="job_search"):
-    keyword = st.text_input("🔎 Job keyword (e.g., Data Scientist)")
-    location = st.text_input("📍 Location (optional)")
-    experience = st.selectbox("🧠 Experience Level", ["", "Junior", "Mid", "Senior"])
-    remote_only = st.checkbox("Remote only", value=True)
-    submit = st.form_submit_button("Search Jobs")
-
-if submit and keyword:
-    with st.spinner("Searching..."):
-        try:
-            response = requests.get(
-                "https://ai-job-backend.onrender.com/search_jobs",
-    params={
-        "keyword": keyword,
-        "location": location,
-        "experience": experience,
-        "remote_only": remote_only
-                }
-            )
-            jobs = response.json().get("results", [])
-
-            if jobs:
-                st.success(f"Found {len(jobs)} jobs")
-                for i, job in enumerate(jobs):
-                    with st.expander(f"{job['title']} at {job['company']}"):
-                        st.write(f"📍 {job['location']}")
-                        st.write(f"[Apply Here]({job['url']})")
-                        if st.button(f"Use This Job {i}"):
-                            st.session_state['selected_job'] = job
-                            st.session_state['job_description'] = job['description']
+        if st.button("Tailor Resume"):
+            if uploaded_resume and job_description:
+                try:
+                    resume_text = extract_text_from_file(uploaded_resume)
+                    tailored = tailor_resume(resume_text, job_description)
+                    st.text_area("📄 Tailored Resume", value=tailored, height=300)
+                    save_to_workspace("tailored_resume.txt", tailored)
+                    st.success("Resume tailored successfully.")
+                except Exception as e:
+                    st.error(f"Error: {e}")
             else:
-                st.warning("No matching jobs found.")
-        except Exception as e:
-            st.error(f"Error fetching jobs: {e}")
+                st.info("Please upload your resume and provide job description.")
 
-#..Application Page
-if jobs:
- for i, job in enumerate(jobs):  # 'job' is defined here
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.markdown(f"**{job['title']}** at *{job['company']}*")
-        st.caption(job.get('location', 'Location not provided'))
-        st.write(job.get('description', '')[:300] + "...")
-    with col2:
-        if st.button(f"Apply Now {i}"):
-            js = f"window.open('{job['url']}')"
-            st.components.v1.html(f"<script>{js}</script>", height=0)
+    elif section == "Generate Cover Letter":
+        uploaded_resume = st.file_uploader("Upload Resume", type=["pdf", "docx", "txt"], key="cl_resume")
+        job_description = st.text_area("Paste Job Description", key="cl_job_desc")
 
-else: 
-    st.warning("No jobs available.")
+        if st.button("Generate Cover Letter"):
+            if uploaded_resume and job_description:
+                with st.spinner("Crafting your letter..."):
+                    try:
+                        resume_text = extract_text_from_file(uploaded_resume)
+                        cover_letter = generate_cover_letter(resume_text, job_description)
+                        st.text_area("📬 Cover Letter", value=cover_letter, height=300)
+                        st.download_button("📥 Download", cover_letter, file_name="cover_letter.txt")
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+            else:
+                st.info("Please provide both resume and job description.")
 
+    elif section == "Workspace":
+        st.info("🗂️ Your workspace feature is under development.")
 
-
-#..Tailor Resume
-if uploaded_file and job_description:
-    st.markdown("### 🛠️ Tailor My Resume to This Job")
-    if st.button("🧠 Tailor Resume"):
-        with st.spinner("Tailoring your resume..."):
-            try:
-                resume_text = extract_text_from_file(uploaded_file)
-                tailored_resume = cover_letter(resume_text, job_description)
-                st.text_area("🎯 Tailored Resume", value=tailored_resume, height=400)
-                st.download_button("📥 Download Tailored Resume", tailored_resume, file_name="tailored_resume.txt")
-            except Exception as e:
-                st.error(f"An error occurred while tailoring: {e}")
-
-#..Save tailored Resume
-file_path = save_to_workspace(tailored_resume)
-st.success(f"🗂️ Saved to workspace: `{file_path}`")
-
-#.. Apply Assistant
-if st.button(f"🪄 Use My Tailored Resume {i}"):
-    st.session_state['active_resume'] = tailored_resume
-    st.session_state['active_cover_letter'] = cover_letter
-    st.markdown("✅ Tailored documents loaded. Ready to apply!")
-
-if 'active_resume' in st.session_state:
-    st.subheader("📎 Quick Copy to Apply")
-    st.text_area("📄 Resume", st.session_state['active_resume'], height=200)
-    st.text_area("📝 Cover Letter", st.session_state['active_cover_letter'], height=200)
-    st.caption("👆 Copy these and paste into the application form manually.")
-
-else:
-    st.warning("🔐 Please log in to access the app.")
+if __name__ == "__main__":
+    main()
