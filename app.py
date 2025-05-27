@@ -9,32 +9,21 @@ import requests
 from PIL import Image
 
 
+if 'user_logged_in' in st.session_state and st.session_state['user_logged_in']:
+    if st.button("🔓 Sign Out"):
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.success("Signed out successfully.")
+        st.experimental_rerun()
 
-if "user" not in st.session_state:
-    st.title("Login to AI Job Assistant")
 
-    auth_mode = st.radio("Select Action", ["Login", "Register"])
-    email = st.text_input("Email")
-    password = st.text_input("Password", type="password")
 
-    if st.button("Continue"):
-        if auth_mode == "Login":
-            user = sign_in_with_email_password(email, password)
-            if user:
-                st.session_state.user = user
-                st.rerun()
-            else:
-                st.error("Invalid login")
-        else:
-            if sign_up(email, password):
-                st.success("Registered! Please login.")
-            else:
-                st.error("Registration failed")
 
-    st.stop()
+
+if st.session_state.get('user_logged_in'):
 
 # --- Backend Communication Function ---
-def call_backend_to_generate_cover_letter(resume_text, job_description):
+ def call_backend_to_generate_cover_letter(resume_text, job_description):
     try:
         response = requests.post(
             "https://ai-job-backend.onrender.com/generate-cover-letter",  # Change this to your Render URL after deployment
@@ -201,3 +190,28 @@ if 'active_resume' in st.session_state:
     st.text_area("📝 Cover Letter", st.session_state['active_cover_letter'], height=200)
     st.caption("👆 Copy these and paste into the application form manually.")
 
+else:
+    st.info("Please log in to continue.")
+
+if "user" not in st.session_state:
+    st.title("Login to AI Job Assistant")
+
+    auth_mode = st.radio("Select Action", ["Login", "Register"])
+    email = st.text_input("Email")
+    password = st.text_input("Password", type="password")
+
+    if st.button("Continue"):
+        if auth_mode == "Login":
+            user = sign_in_with_email_password(email, password)
+            if user:
+                st.session_state.user = user
+                st.rerun()
+            else:
+                st.error("Invalid login")
+        else:
+            if sign_up(email, password):
+                st.success("Registered! Please login.")
+            else:
+                st.error("Registration failed")
+
+    st.stop()    
